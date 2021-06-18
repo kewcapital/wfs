@@ -344,6 +344,7 @@ func (d *DriveFacade) listFolder(path FileID, config *ListConfig, res []File) ([
                 for _, subfile := range sublist {
                     if subfile.IsDir() {
                         fs.HasSubfolder = true
+                        break
                     }
                 }
             }
