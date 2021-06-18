@@ -13,6 +13,7 @@ type File struct {
 	Date  int64      `json:"date"`
 	Type  string     `json:"type"`
 	Files []File `json:"data,omitempty"`
+	HasSubfolder bool `json:"webix_kids"`
 }
 
 // File stores info about single file

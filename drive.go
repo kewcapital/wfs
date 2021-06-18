@@ -74,7 +74,7 @@ func (d *DriveFacade) Search(id, search string, config ...*ListConfig) ([]File, 
 
 	out := make([]File, 0)
 	for _, file := range data {
-		out = append(out, File{file.Name(), id, file.Size(), file.ModTime().Unix(), GetType(file.Name(), file.IsDir()), nil})
+		out = append(out, File{file.Name(), id, file.Size(), file.ModTime().Unix(), GetType(file.Name(), file.IsDir()), nil, false})
 	}
 
 	return out, nil
@@ -179,7 +179,7 @@ func (d *DriveFacade) Info(id string) (File, error) {
 		return File{}, errors.New("Access denied")
 	}
 
-	return File{ID: info.File().ClientID(), Name:info.Name(), Size: info.Size(), Date: info.ModTime().Unix(), Type: GetType(info.Name(), info.IsDir()), Files: nil }, nil
+	return File{ID: info.File().ClientID(), Name:info.Name(), Size: info.Size(), Date: info.ModTime().Unix(), Type: GetType(info.Name(), info.IsDir()), Files: nil, HasSubfolder: false }, nil
 }
 
 //Mkdir creates a new folder
@@ -318,22 +318,35 @@ func (d *DriveFacade) listFolder(path FileID, config *ListConfig, res []File) ([
 		}
 
 		id := file.File().ClientID()
-		fs := File{file.Name(), id, file.Size(), file.ModTime().Unix(), GetType(file.Name(), file.IsDir()), nil}
+		fs := File{file.Name(), id, file.Size(), file.ModTime().Unix(), GetType(file.Name(), file.IsDir()), nil, false}
 
-		if isDir && config.SubFolders {
-			sub, err := d.listFolder(file.File(),
-				config, res)
+		if isDir {
+		    if config.SubFolders {
+                sub, err := d.listFolder(file.File(),
+                    config, res)
 
-			fs.Type = "folder"
-			if err != nil {
-				return nil, err
-			}
+                fs.Type = "folder"
+                if err != nil {
+                    return nil, err
+                }
 
-			if !config.Nested {
-				res = sub
-			} else if len(sub) > 0 {
-				fs.Files = sub
-			}
+                if !config.Nested {
+                    res = sub
+                } else if len(sub) > 0 {
+                    fs.Files = sub
+                }
+            } else {
+                // Check for and set the webix_kids flag if the folder has subfolders
+                sublist, err := d.adapter.List(file.File())
+                if err != nil {
+                    return nil, err
+                }
+                for _, subfile := range sublist {
+                    if subfile.IsDir() {
+                        fs.HasSubfolder = true
+                    }
+                }
+            }
 		}
 
 		if !skipFile {
